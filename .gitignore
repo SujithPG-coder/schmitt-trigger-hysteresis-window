@@ -1,0 +1,15 @@
+# SPICE outputs
+*.raw
+*.log
+*.op.raw
+*.net
+*.dat
+# Proteus backups / workspace
+*.pdsbak
+*.workspace
+Last Loaded *.pdsbak
+# Python
+__pycache__/
+# OS
+.DS_Store
+Thumbs.db

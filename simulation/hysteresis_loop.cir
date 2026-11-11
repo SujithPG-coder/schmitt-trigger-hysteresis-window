@@ -1,0 +1,33 @@
+* =============================================================================
+* Hysteresis (transfer) characteristic of the inverting Schmitt trigger
+* Slow triangular input 0 V -> 5 V -> 0 V, plot Vout vs Vin
+* Simulator: ngspice  (run:  ngspice -b hysteresis_loop.cir)
+* =============================================================================
+VCC  vcc 0 DC 15
+VEE  vee 0 DC -15
+VIN  in  0 PWL(0 0 50m 5 100m 0)
+R1   in  inv 10k
+R4   vcc vref 6.1k
+R5   vref 0   1k
+R    out noninv 130k
+R2   noninv vref 10k
+
+.subckt OPAMP741 inp inn out vcc vee
+Rin  inp inn 2Meg
+Bgain int 0 V = max(min(2e5*(V(inp)-V(inn)), 13.5), -13.5)
+Rout int out 75
+Cslew out 0 1n
+.ends OPAMP741
+XU1 noninv inv out vcc vee OPAMP741
+
+.tran 10u 100m
+.control
+  run
+  wrdata hysteresis_loop.dat v(in) v(out)
+  meas tran vut WHEN v(out)=0 FALL=1
+  meas tran vlt WHEN v(out)=0 RISE=1
+  let vin_up = 5*vut/50m
+  let vin_dn = 5 - 5*(vlt-50m)/50m
+  print vin_up vin_dn
+.endc
+.end

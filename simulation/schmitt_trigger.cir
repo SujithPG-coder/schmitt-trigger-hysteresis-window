@@ -1,0 +1,51 @@
+* =============================================================================
+* Inverting Schmitt Trigger - hysteresis window 1 V (VLT) to 3 V (VUT)
+* LM741 op-amp, +/-15 V supply, Vsat = +/-13.5 V
+* Simulator: ngspice  (run:  ngspice -b schmitt_trigger.cir)
+* =============================================================================
+* Design:  VH = VUT - VLT = 2 R2/(R+R2) * Vsat = 2 V   ->  R = 130k, R2 = 10k
+*          VCTR = (VUT + VLT)/2 = 2 V = R/(R+R2) * Vref -> Vref ~= 2.1 V
+*          Vref from divider R4/R5 on +15 V: 15 * 1k / 7.1k = 2.11 V
+* -----------------------------------------------------------------------------
+
+* ---- Supplies ----
+VCC  vcc 0 DC 15
+VEE  vee 0 DC -15
+
+* ---- Noisy input: 10 V, 100 Hz sine + white noise ----
+VSIN  sin_n 0     DC 0 SIN(0 10 100)
+VNOI  in    sin_n DC 0 TRNOISE(0.35 20u 0 0)
+R1    in    inv   10k
+
+* ---- Reference divider (third supply generated from +15 V) ----
+R4    vcc   vref  6.1k
+R5    vref  0     1k
+
+* ---- Positive feedback network ----
+R     out   noninv 130k
+R2    noninv vref  10k
+
+* ---- LM741 behavioural model (high gain, output saturates at +/-13.5 V) ----
+.subckt OPAMP741 inp inn out vcc vee
+Rin  inp inn 2Meg
+Bgain int 0 V = max(min(2e5*(V(inp)-V(inn)), 13.5), -13.5)
+Rout int out 75
+Cslew out 0 1n
+.ends OPAMP741
+XU1 noninv inv out vcc vee OPAMP741
+
+* ---- For comparison: plain inverting comparator (no hysteresis), Vref = 2 V ----
+VTH   th2 0 DC 2
+XU2   th2 in out_cmp vcc vee OPAMP741
+
+.tran 10u 40m
+.control
+  run
+  wrdata schmitt_transient.dat v(in) v(out) v(out_cmp)
+  meas tran vref_avg AVG v(vref) from=1m to=40m
+  echo "Upper threshold VUT = Vref*R/(R+R2) + 13.5*R2/(R+R2)"
+  let vut = 2.113*130/140 + 13.5*10/140
+  let vlt = 2.113*130/140 - 13.5*10/140
+  print vut vlt
+.endc
+.end
